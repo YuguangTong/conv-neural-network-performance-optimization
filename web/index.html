@@ -374,7 +374,7 @@ $("#startButton").click(function() {
   $.post(base_url + "run", JSON.stringify(current_samples), function( data ) {
     var resp = JSON.parse(data);
     speed = 1000.0 * (num_samples / resp['dt']);
-    $("#speedBar").width((speed * 100.0 / 600.0) + '%');
+    $("#speedBar").width((speed * 100.0 / 3000.0) + '%');
     $("#speedText").text(Number(speed).toFixed(2) + " Cat/s");
 
     var correct = 0;
