@@ -22,7 +22,7 @@ done
 
 for i in 100 400 600 1200; do
   echo -n "PARALLEL TEST $i... "
-  ../cnn partest 22 2>/dev/null | grep PAR > out/par$i.txt
+  ../cnn partest $i 2>/dev/null | grep PAR > out/par$i.txt
   python compare_output.py out/par$i.txt ref/par$i.txt
 
   if [ "$?" -ne 0 ]; then
