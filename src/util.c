@@ -107,13 +107,12 @@ double run_classification(int* samples, int n, double** keep_output) {
   }
 
   fprintf(stderr, "Running classification...\n");
-  double* layer_time;
   uint64_t start_time = timestamp_us(); 
-  layer_time = net_classify_cats(net, input, output, n);
+  net_classify_cats(net, input, output, n);
   uint64_t end_time = timestamp_us();
 
   for (int i = 0; i < 11; i++) {
-      fprintf(stderr, "Layer %d took %lf ms\n", i, layer_time[i]/1000.);
+      fprintf(stderr, "Layer %d took %lf ms\n", i, tot_layer_time[i]/1000.);
   }
   for (int i = 0; i < n; i++) {
     samples[i] = (output[i] > 0.5) ? 0 : -1;

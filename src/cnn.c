@@ -648,7 +648,7 @@ void free_batch(batch_t* v, int size) {
  */
 static double indiv_layer_time[11];
 
-double* net_forward(network_t* net, batch_t* v, int start, int end) {
+void net_forward(network_t* net, batch_t* v, int start, int end) {
     uint64_t t[12];
     t[0] = timestamp_us();
     conv_forward(net->l0, v[0], v[1], start, end);
@@ -676,7 +676,6 @@ double* net_forward(network_t* net, batch_t* v, int start, int end) {
 
     for (int i=0; i<11; i++)
 	indiv_layer_time[i] = (t[i+1] - t[i]);
-    return indiv_layer_time;
 }
 
 /*
@@ -689,24 +688,21 @@ double* net_forward(network_t* net, batch_t* v, int start, int end) {
  */
 
 #define CAT_LABEL 3
-static double tot_layer_time[11] = {20., 30.,};
-//static double * layer_time_local;
+static double tot_layer_time[11];
 
-double* net_classify_cats(network_t* net, vol_t** input, double* output, int n) {
+void net_classify_cats(network_t* net, vol_t** input, double* output, int n) {
   batch_t* batch = make_batch(net, 1);
-  double* layer_time_local;
   
   for (int i = 0; i < n; i++) {
     copy_vol(batch[0][0], input[i]);
-    layer_time_local = net_forward(net, batch, 0, 0);
+    net_forward(net, batch, 0, 0);
     for (int j = 0; j < 11; j++) {
-    	tot_layer_time[j] += *(layer_time_local+j);
+    	tot_layer_time[j] += indiv_layer_time[j];
     }
     output[i] = batch[11][0]->w[CAT_LABEL]; 
   }
 
   free_batch(batch, 1);
-  return tot_layer_time;
 }
 
 // IGNORE EVERYTHING BELOW THIS POINT -----------------------------------------
