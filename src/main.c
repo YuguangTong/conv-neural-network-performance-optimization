@@ -48,7 +48,9 @@ int do_test(int argc, char** argv) {
   batch_t* batch = make_batch(net, 1);
   load_sample(batch[0][0], sample_num);
 
-  uint64_t start_time = timestamp_us(); 
+  uint64_t start_time = timestamp_us();
+  double * layer_time;
+  
   net_forward(net, batch, 0, 0);
   uint64_t end_time = timestamp_us();
   fprintf(stderr, "Time: %lf ms\n", (double)(end_time-start_time) / 1000.0);
