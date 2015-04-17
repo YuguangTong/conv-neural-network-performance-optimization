@@ -184,34 +184,44 @@ conv_layer_t* make_conv_layer(int in_sx, int in_sy, int in_depth,
 }
 
 void conv_forward(conv_layer_t* l, vol_t** in, vol_t** out, int start, int end) {
+  
+  int xy_stride = l->stride;
+  int x = -l->pad;
+  int y = -l->pad;
+  vol_t* l_biases = l -> biases;
+
+
   for (int i = start; i <= end; i++) {
     vol_t* V = in[i];
     vol_t* A = out[i];
         
     int V_sx = V->sx;
     int V_sy = V->sy;
-    int xy_stride = l->stride;
+    int V_depth = V->depth;
+
   
     for(int d = 0; d < l->out_depth; d++) {
+      
       vol_t* f = l->filters[d];
-      int x = -l->pad;
-      int y = -l->pad;
+      int f_depth = f->depth;
+      int f_sx = f->sx;
+      int f_sy = f->sy;
+
+      double a = 0.0;
       for(int ay = 0; ay < l->out_sy; y += xy_stride, ay++) {
-        x = -l->pad;
-        for(int ax=0; ax < l->out_sx; x += xy_stride, ax++) {
-          double a = 0.0;
-          for(int fy = 0; fy < f->sy; fy++) {
+        for(int ax= 0; ax < l->out_sx; x += xy_stride, ax++) {
+          for(int fy = 0; fy < f_sy; fy++) {
             int oy = y + fy;
-            for(int fx = 0; fx < f->sx; fx++) {
+            for(int fx = 0; fx < f_sx; fx++) {
               int ox = x + fx;
               if(oy >= 0 && oy < V_sy && ox >=0 && ox < V_sx) {
                 for(int fd=0;fd < f->depth; fd++) {
-                  a += f->w[((f->sx * fy)+fx)*f->depth+fd] * V->w[((V_sx * oy)+ox)*V->depth+fd];
+                  a += f->w[((f_sx * fy)+fx)*f_depth+fd] * V->w[((V_sx * oy)+ox)*V_depth+fd];
                 }
               }
             }
           }
-          a += l->biases->w[d];
+          a += l_biases->w[d];
           set_vol(A, ax, ay, d, a);
         }
       }
@@ -646,19 +656,36 @@ void free_batch(batch_t* v, int size) {
  * as input to v and start/end are the first and the last image in that batch
  * to process (start and end are inclusive).
  */
+static double indiv_layer_time[11];
 
 void net_forward(network_t* net, batch_t* v, int start, int end) {
-  conv_forward(net->l0, v[0], v[1], start, end);
-  relu_forward(net->l1, v[1], v[2], start, end);
-  pool_forward(net->l2, v[2], v[3], start, end);
-  conv_forward(net->l3, v[3], v[4], start, end);
-  relu_forward(net->l4, v[4], v[5], start, end);
-  pool_forward(net->l5, v[5], v[6], start, end);
-  conv_forward(net->l6, v[6], v[7], start, end);
-  relu_forward(net->l7, v[7], v[8], start, end);
-  pool_forward(net->l8, v[8], v[9], start, end);
-  fc_forward(net->l9, v[9], v[10], start, end);
-  softmax_forward(net->l10, v[10], v[11], start, end);
+    uint64_t t[12];
+    t[0] = timestamp_us();
+    conv_forward(net->l0, v[0], v[1], start, end);
+    t[1] = timestamp_us();    
+    relu_forward(net->l1, v[1], v[2], start, end);
+    t[2] = timestamp_us();
+    pool_forward(net->l2, v[2], v[3], start, end);
+    t[3] = timestamp_us();
+    conv_forward(net->l3, v[3], v[4], start, end);
+    t[4] = timestamp_us();
+    relu_forward(net->l4, v[4], v[5], start, end);
+    t[5] = timestamp_us();
+    pool_forward(net->l5, v[5], v[6], start, end);
+    t[6] = timestamp_us();
+    conv_forward(net->l6, v[6], v[7], start, end);
+    t[7] = timestamp_us();
+    relu_forward(net->l7, v[7], v[8], start, end);
+    t[8] = timestamp_us();
+    pool_forward(net->l8, v[8], v[9], start, end);
+    t[9] = timestamp_us();
+    fc_forward(net->l9, v[9], v[10], start, end);
+    t[10] = timestamp_us();
+    softmax_forward(net->l10, v[10], v[11], start, end);
+    t[11] = timestamp_us();
+
+    for (int i=0; i<11; i++)
+	indiv_layer_time[i] = (t[i+1] - t[i]);
 }
 
 /*
@@ -671,12 +698,17 @@ void net_forward(network_t* net, batch_t* v, int start, int end) {
  */
 
 #define CAT_LABEL 3
+static double tot_layer_time[11];
+
 void net_classify_cats(network_t* net, vol_t** input, double* output, int n) {
   batch_t* batch = make_batch(net, 1);
-
+  
   for (int i = 0; i < n; i++) {
     copy_vol(batch[0][0], input[i]);
     net_forward(net, batch, 0, 0);
+    for (int j = 0; j < 11; j++) {
+    	tot_layer_time[j] += indiv_layer_time[j];
+    }
     output[i] = batch[11][0]->w[CAT_LABEL]; 
   }
 
