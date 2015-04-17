@@ -189,15 +189,15 @@ void conv_forward(conv_layer_t* l, vol_t** in, vol_t** out, int start, int end) 
   for (int i = start; i <= end; i++) {
     vol_t* V = in[i];
     vol_t* A = out[i];
-    vol_t* l_biases = l->biases;
+    //vol_t* l_biases = l->biases;
     
     int V_sx = V->sx;
     int V_sy = V->sy;
-    int V_depth = V->depth;
+    //int V_depth = V->depth;
     
     for(int d = 0; d < l->out_depth; d++) {
       vol_t* f = l->filters[d];
-
+      //      fprintf(stderr, "f_sx is %d\n", f->sx);
       int x = -l->pad;
       int y = -l->pad;
 
@@ -215,14 +215,33 @@ void conv_forward(conv_layer_t* l, vol_t** in, vol_t** out, int start, int end) 
               int ox = x + fx;
               if(oy >= 0 && oy < V_sy && ox >=0 && ox < V_sx) {
 		  int f_w_ind = ((f_sx * fy)+fx)*f_depth;
-		  int v_w_ind = ((V_sx * oy)+ox)*V_depth;
-		  for (int fd = 0; fd < f_depth; fd++)
+		  int v_w_ind = ((V_sx * oy)+ox)*V->depth;
+		  /* for (int fd = 0; fd < f_depth; fd++) */
+		  /*     a += f->w[f_w_ind+fd] * V->w[v_w_ind+fd]; */
+		  int fd = 0;
+		  if (f_depth > 3) {
+		      __m256d sum =_mm256_set_pd(0.0, 0.0, 0.0, 0.0);
+		      for (; fd < f_depth-4; fd += 4) {
+		      	  __m256d fw = _mm256_loadu_pd(f->w + (f_w_ind + fd));
+		      	  __m256d vw = _mm256_loadu_pd(V->w + (v_w_ind + fd));
+		      	  __m256d prod = _mm256_mul_pd(fw, vw);
+	      	      	  sum = _mm256_add_pd(sum, prod);
+		      }
+		      double temp_sum[4] = {0.0, 0.0, 0.0, 0.0};
+
+		      _mm256_storeu_pd(temp_sum, sum);
+
+		      for (int k = 0; k < 4; k++)
+		      	  a += temp_sum[k];
+		  }
+		  for (; fd < f_depth; fd++){
 		      a += f->w[f_w_ind+fd] * V->w[v_w_ind+fd];
-		      
+		  }
+		  
               }
             }
           }
-          a += l_biases->w[d];
+          a += l->biases->w[d];
           set_vol(A, ax, ay, d, a);
         }
       }
