@@ -1,6 +1,6 @@
 QUESTION 1:
 
-LAYER 0 (conv)     :  4075.4 / 42.65 %
+LAYER 0 (conv)     : 4075.4 ms / 42.65 %
 LAYER 1 (relu)     : 39.2 ms / 0.41 %
 LAYER 2 (pool)     : 84.8 ms / 0.89 %
 LAYER 3 (conv)     : 4122.3 ms / 43.14 %

@@ -551,6 +551,7 @@ typedef struct network {
 network_t* make_network() {
   network_t* net = (network_t*)malloc(sizeof(network_t));
   net->v[0] = make_vol(32, 32, 3, 0.0);
+  //  net->l0 = make_conv_layer(32, 32, 3, 5, 16, 1, 2);
   net->l0 = make_conv_layer(32, 32, 3, 5, 16, 1, 2);
   net->v[1] = make_vol(net->l0->out_sx, net->l0->out_sy, net->l0->out_depth, 0.0);
   net->l1 = make_relu_layer(net->v[1]->sx, net->v[1]->sy, net->v[1]->depth);
