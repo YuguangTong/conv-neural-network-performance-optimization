@@ -204,9 +204,8 @@ void conv_forward(conv_layer_t* l, vol_t** in, vol_t** out, int start, int end) 
       int f_sx = f->sx;
       int f_sy = f->sy;
       int f_depth = f->depth;
-      
       for(int ay = 0; ay < l->out_sy; y += xy_stride, ay++) {
-        x = -l->pad;
+	x = -l->pad;
 
         for(int ax=0; ax < l->out_sx; x += xy_stride, ax++) {
           double a = 0.0;
@@ -215,9 +214,11 @@ void conv_forward(conv_layer_t* l, vol_t** in, vol_t** out, int start, int end) 
             for(int fx = 0; fx < f_sx; fx++) {
               int ox = x + fx;
               if(oy >= 0 && oy < V_sy && ox >=0 && ox < V_sx) {
-                for(int fd=0;fd < f_depth; fd++) {
-                  a += f->w[((f_sx * fy)+fx)*f_depth+fd] * V->w[((V_sx * oy)+ox)*V_depth+fd];
-                }
+		  int f_w_ind = ((f_sx * fy)+fx)*f_depth;
+		  int v_w_ind = ((V_sx * oy)+ox)*V_depth;
+		  for (int fd = 0; fd < f_depth; fd++)
+		      a += f->w[f_w_ind+fd] * V->w[v_w_ind+fd];
+		      
               }
             }
           }
@@ -700,20 +701,41 @@ void net_forward(network_t* net, batch_t* v, int start, int end) {
 
 #define CAT_LABEL 3
 static double tot_layer_time[11];
+#define BATCH_NUM 16
 
 void net_classify_cats(network_t* net, vol_t** input, double* output, int n) {
-  batch_t* batch = make_batch(net, 1);
+  batch_t* batch = make_batch(net, BATCH_NUM);
+  int m = n;
+  if (n%BATCH_NUM != 0)
+      m = n - n%BATCH_NUM;
   
-  for (int i = 0; i < n; i++) {
-    copy_vol(batch[0][0], input[i]);
-    net_forward(net, batch, 0, 0);
+  for (int i = 0; i < m; i+=BATCH_NUM ) {
+      for (int j = 0; j < BATCH_NUM; j++) {
+	  copy_vol(batch[0][j], input[i+j]);
+      }
+    net_forward(net, batch, 0, BATCH_NUM-1);
     for (int j = 0; j < 11; j++) {
     	tot_layer_time[j] += indiv_layer_time[j];
     }
-    output[i] = batch[11][0]->w[CAT_LABEL]; 
+    for (int j = 0; j < BATCH_NUM; j++) {
+	output[i+j] = batch[11][j]->w[CAT_LABEL];
+    }
   }
+  
+  free_batch(batch, BATCH_NUM);
 
+  batch = make_batch(net, 1);
+  
+  for (int i = m; i < n; i++) {
+      copy_vol(batch[0][0], input[i]);
+      net_forward(net, batch, 0, 0);
+      for (int j = 0; j < 11; j++) {
+	  tot_layer_time[j] += indiv_layer_time[j];
+      }
+      output[i] = batch[11][0]->w[CAT_LABEL];
+  }
   free_batch(batch, 1);
+  
 }
 
 // IGNORE EVERYTHING BELOW THIS POINT -----------------------------------------
