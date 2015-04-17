@@ -186,6 +186,7 @@ conv_layer_t* make_conv_layer(int in_sx, int in_sy, int in_depth,
 void conv_forward(conv_layer_t* l, vol_t** in, vol_t** out, int start, int end) {
     int xy_stride = l->stride;
 
+    //#pragma omp parallel for num_threads(4)
   for (int i = start; i <= end; i++) {
     vol_t* V = in[i];
     vol_t* A = out[i];
@@ -197,7 +198,7 @@ void conv_forward(conv_layer_t* l, vol_t** in, vol_t** out, int start, int end) 
     
     for(int d = 0; d < l->out_depth; d++) {
       vol_t* f = l->filters[d];
-      //      fprintf(stderr, "f_sx is %d\n", f->sx);
+
       int x = -l->pad;
       int y = -l->pad;
 
@@ -648,6 +649,7 @@ typedef vol_t** batch_t;
 
 batch_t* make_batch(network_t* old_net, int size) {
   batch_t* out = (batch_t*)malloc(sizeof(vol_t**)*(LAYERS+1));
+
   for (int i = 0; i < LAYERS+1; i++) {
     out[i] = (vol_t**)malloc(sizeof(vol_t*)*size);
     for (int j = 0; j < size; j++) {
@@ -728,6 +730,7 @@ void net_classify_cats(network_t* net, vol_t** input, double* output, int n) {
   if (n%BATCH_NUM != 0)
       m = n - n%BATCH_NUM;
   
+#pragma omp parallel for num_threads(8)
   for (int i = 0; i < m; i+=BATCH_NUM ) {
       for (int j = 0; j < BATCH_NUM; j++) {
 	  copy_vol(batch[0][j], input[i+j]);
