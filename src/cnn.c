@@ -209,9 +209,12 @@ void conv_forward_1(conv_layer_t* l, vol_t** in, vol_t** out, int start, int end
 			    int f_w_ind = (f_sx_fy + fx) * 3;
 			    int v_w_ind = (v_sx_oy + ox) * 3;
 			    if(oy >= 0 && oy < 32 && ox >=0 && ox < 32) {
-				a += f_w[f_w_ind] * V_w[v_w_ind];
-				a += f_w[f_w_ind+1] * V_w[v_w_ind+1];
-				a += f_w[f_w_ind+2] * V_w[v_w_ind+2];
+				/* a += f_w[f_w_ind] * V_w[v_w_ind]; */
+				/* a += f_w[f_w_ind+1] * V_w[v_w_ind+1]; */
+				/* a += f_w[f_w_ind+2] * V_w[v_w_ind+2]; */
+				for (int fd = 0; fd < 3; fd++) {
+				    a += f_w[f_w_ind + fd] * V_w[v_w_ind + fd];
+				}
 			    }
 			}
 		    }
