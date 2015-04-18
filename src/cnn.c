@@ -198,8 +198,6 @@ void conv_forward(conv_layer_t* l, vol_t** in, vol_t** out, int start, int end) 
       vol_t* f = l->filters[d];
       int x = -l->pad;
       int y = -l->pad;
-      /* int f_sx = f->sx; */
-      /* int f_sy = f->sy; */
       int f_depth = f->depth;
       for(int ay = 0; ay < l->out_sy; y += xy_stride, ay++) {
         x = -l->pad;
@@ -698,22 +696,43 @@ void net_forward(network_t* net, batch_t* v, int start, int end) {
 
 #define CAT_LABEL 3
 static double tot_layer_time[11];
+#define BATCH_SIZE 16
 
 void net_classify_cats(network_t* net, vol_t** input, double* output, int n) {
-  batch_t* batch = make_batch(net, 1);
-  
-  for (int i = 0; i < n; i++) {
-    copy_vol(batch[0][0], input[i]);
-    net_forward(net, batch, 0, 0);
-    for (int j = 0; j < 11; j++) {
-    	tot_layer_time[j] += indiv_layer_time[j];
+    batch_t* batch = make_batch(net, BATCH_SIZE);
+    int m = n/BATCH_SIZE*BATCH_SIZE;
+    
+    for (int i = 0; i < m; i+=BATCH_SIZE) {
+	for (int j = 0; j < BATCH_SIZE; j++) {
+	    copy_vol(batch[0][j], input[i+j]);
+	}
+	net_forward(net, batch, 0, BATCH_SIZE-1);
+	for (int j = 0; j < 11; j++) {
+	    tot_layer_time[j] += indiv_layer_time[j];
+	}
+	for (int j = 0; j < BATCH_SIZE; j++) {
+	    output[i+j] = batch[11][j]->w[CAT_LABEL];
+	}
     }
-    output[i] = batch[11][0]->w[CAT_LABEL]; 
-  }
+    free_batch(batch, BATCH_SIZE);
 
-  free_batch(batch, 1);
+    if (m < n -1) {
+	batch = make_batch(net, 1);
+	for (int i = m; i < n; i++) {
+	    copy_vol(batch[0][0], input[i]);
+	    net_forward(net, batch, 0, 0);
+	    for (int j = 0; j < 11; j++) {
+		tot_layer_time[j] += indiv_layer_time[j];
+	    }
+	    output[i] = batch[11][0]->w[CAT_LABEL];
+	}
+	free_batch(batch, 1);
+    }
 }
 
+
+
+    
 // IGNORE EVERYTHING BELOW THIS POINT -----------------------------------------
 
 // Including C files in other C files is very bad style and should be avoided
