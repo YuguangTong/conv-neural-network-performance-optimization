@@ -20,7 +20,7 @@ for i in {1..20}; do
   fi
 done
 
-for i in 100 400 600 1200; do
+for i in 100 400 600 1200 6000 24000; do
   echo -n "PARALLEL TEST $i... "
   ../cnn partest $i 2>/dev/null | grep PAR > out/par$i.txt
   python compare_output.py out/par$i.txt ref/par$i.txt

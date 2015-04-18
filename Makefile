@@ -25,6 +25,9 @@ benchmark-huge: cnn
 test: cnn
 	@cd test ; bash run_test.sh
 
+test-huge: cnn
+	@cd test ; bash huge_test.sh
+
 clean:
 	rm cnn cnnModule.so
 
