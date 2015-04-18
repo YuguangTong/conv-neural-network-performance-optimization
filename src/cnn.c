@@ -184,29 +184,38 @@ conv_layer_t* make_conv_layer(int in_sx, int in_sy, int in_depth,
 }
 
 void conv_forward(conv_layer_t* l, vol_t** in, vol_t** out, int start, int end) {
+    int xy_stride = l->stride;
+
   for (int i = start; i <= end; i++) {
     vol_t* V = in[i];
     vol_t* A = out[i];
         
     int V_sx = V->sx;
     int V_sy = V->sy;
-    int xy_stride = l->stride;
-  
+    int V_depth = V->depth;
+    
     for(int d = 0; d < l->out_depth; d++) {
       vol_t* f = l->filters[d];
       int x = -l->pad;
       int y = -l->pad;
+      /* int f_sx = f->sx; */
+      /* int f_sy = f->sy; */
+      int f_depth = f->depth;
       for(int ay = 0; ay < l->out_sy; y += xy_stride, ay++) {
         x = -l->pad;
         for(int ax=0; ax < l->out_sx; x += xy_stride, ax++) {
           double a = 0.0;
           for(int fy = 0; fy < f->sy; fy++) {
             int oy = y + fy;
+	    int f_sx_fy = f->sx * fy;
+	    int v_sx_oy = V_sx * oy;
             for(int fx = 0; fx < f->sx; fx++) {
               int ox = x + fx;
+	      int f_w_ind = (f_sx_fy + fx) * f_depth;
+	      int v_w_ind = (v_sx_oy + ox) * V_depth;
               if(oy >= 0 && oy < V_sy && ox >=0 && ox < V_sx) {
                 for(int fd=0;fd < f->depth; fd++) {
-                  a += f->w[((f->sx * fy)+fx)*f->depth+fd] * V->w[((V_sx * oy)+ox)*V->depth+fd];
+                  a += f->w[f_w_ind+fd] * V->w[v_w_ind+fd];
                 }
               }
             }
