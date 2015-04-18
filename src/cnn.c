@@ -225,40 +225,48 @@ void conv_forward_1(conv_layer_t* l, vol_t** in, vol_t** out, int start, int end
 
 
 void conv_forward_2(conv_layer_t* l, vol_t** in, vol_t** out, int start, int end) {
-    int xy_stride = 1;//l->stride;
+    /* int xy_stride = 1;//l->stride; */
 
     //    fprintf(stderr, "xy_stride = %d\n", xy_stride);
+    /* fprintf(stderr, "l->out_depth = %d\n", l->out_depth); */
+    /* fprintf(stderr, "l->out_sx = %d\n", l->out_sx); */
+    /* fprintf(stderr, "l->out_sy = %d\n", l->out_sy); */
     for (int i = start; i <= end; i++) {
 	vol_t* V = in[i];
 	vol_t* A = out[i];
         
-	int V_sx = V->sx;
-	int V_sy = V->sy;
-	int V_depth = V->depth;
+	/* int V_sx = 16; */
+	/* int V_sy = 16; */
+	/* int V_depth = 16; */
 	double* V_w = V->w;
-	fprintf(stderr, "v_sx=%d\n", V_sx);
-	fprintf(stderr, "v_sy=%d\n", V_sy);
-	fprintf(stderr, "v_depth=%d\n", V_depth);
-	for(int d = 0; d < l->out_depth; d++) {
+  	/* fprintf(stderr, "v_sx=%d\n", V_sx); */
+	/* fprintf(stderr, "v_sy=%d\n", V_sy); */
+	/* fprintf(stderr, "v_depth=%d\n", V_depth); */
+	for(int d = 0; d < 20; d++) {
 	    vol_t* f = l->filters[d];
-	    int x = -l->pad;
-	    int y = -l->pad;
-	    int f_depth = f->depth;
+	    int x = -2;
+	    int y = -2;
+	    //int f_depth = f->depth;
 	    double* f_w = f->w;
-	    
-	    for(int ay = 0; ay < l->out_sy; y += xy_stride, ay++) {
-		x = -l->pad;
-		for(int ax=0; ax < l->out_sx; x += xy_stride, ax++) {
+	    /* if (d == 0) { */
+	    /* 	fprintf(stderr, "f->sx = %d\n", f->sx); */
+	    /* 	fprintf(stderr, "f->sy = %d\n", f->sy); */
+	    /* 	fprintf(stderr, "x = %d\n", -l->pad); */
+	    /* } */
+	    //f_sx = f_sy = 5
+	    for(int ay = 0; ay < 16; y++, ay++) {
+		x = -2;
+		for(int ax=0; ax < 16; x++, ax++) {
 		    double a = 0.0;
-		    for(int fy = 0; fy < f->sy; fy++) {
+		    for(int fy = 0; fy < 5; fy++) {
 			int oy = y + fy;
-			int f_sx_fy = f->sx * fy;
-			int v_sx_oy = V_sx * oy;
-			for(int fx = 0; fx < f->sx; fx++) {
+			int f_sx_fy = 5 * fy;
+			int v_sx_oy = 16 * oy;
+			for(int fx = 0; fx < 5; fx++) {
 			    int ox = x + fx;
-			    int f_w_ind = (f_sx_fy + fx) * f_depth;
-			    int v_w_ind = (v_sx_oy + ox) * V_depth;
-			    if(oy >= 0 && oy < V_sy && ox >=0 && ox < V_sx) {
+			    int f_w_ind = (f_sx_fy + fx) * 16;
+			    int v_w_ind = (v_sx_oy + ox) * 16;
+			    if(oy >= 0 && oy < 16 && ox >=0 && ox < 16) {
 				/* for(int fd=0;fd < f->depth; fd++) { */
 				/*     a += f_w[f_w_ind+fd] * V_w[v_w_ind+fd]; */
 				/* } */
