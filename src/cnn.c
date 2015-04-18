@@ -183,47 +183,84 @@ conv_layer_t* make_conv_layer(int in_sx, int in_sy, int in_depth,
   return l;
 }
 
+
+void conv_forward_1(conv_layer_t* l, vol_t** in, vol_t** out, int start, int end) {
+    for (int i = start; i <= end; i++) {
+	vol_t* V = in[i];
+	vol_t* A = out[i];
+        
+	for(int d = 0; d < l->out_depth; d++) {
+	    vol_t* f = l->filters[d];
+	    int x = -2;
+	    int y = -2;
+	    for(int ay = 0; ay < 32; y++, ay++) {
+		x = -2;
+		for(int ax=0; ax < 32; x++, ax++) {
+		    double a = 0.0;
+		    for(int fy = 0; fy < 5; fy++) {
+			int oy = y + fy;
+			int f_sx_fy = f->sx * fy;
+			int v_sx_oy = 32 * oy;
+			for(int fx = 0; fx < 5; fx++) {
+			    int ox = x + fx;
+			    int f_w_ind = (f_sx_fy + fx) * 3;
+			    int v_w_ind = (v_sx_oy + ox) * 3;
+			    if(oy >= 0 && oy < 32 && ox >=0 && ox < 32) {
+				a += f->w[f_w_ind] * V->w[v_w_ind];
+				a += f->w[f_w_ind+1] * V->w[v_w_ind+1];
+				a += f->w[f_w_ind+2] * V->w[v_w_ind+2];
+			    }
+			}
+		    }
+		    a += l->biases->w[d];
+		    set_vol(A, ax, ay, d, a);
+		}
+	    }
+	}
+    }
+}
+
 void conv_forward(conv_layer_t* l, vol_t** in, vol_t** out, int start, int end) {
     int xy_stride = l->stride;
 
-  for (int i = start; i <= end; i++) {
-    vol_t* V = in[i];
-    vol_t* A = out[i];
+    for (int i = start; i <= end; i++) {
+	vol_t* V = in[i];
+	vol_t* A = out[i];
         
-    int V_sx = V->sx;
-    int V_sy = V->sy;
-    int V_depth = V->depth;
+	int V_sx = V->sx;
+	int V_sy = V->sy;
+	int V_depth = V->depth;
     
-    for(int d = 0; d < l->out_depth; d++) {
-      vol_t* f = l->filters[d];
-      int x = -l->pad;
-      int y = -l->pad;
-      int f_depth = f->depth;
-      for(int ay = 0; ay < l->out_sy; y += xy_stride, ay++) {
-        x = -l->pad;
-        for(int ax=0; ax < l->out_sx; x += xy_stride, ax++) {
-          double a = 0.0;
-          for(int fy = 0; fy < f->sy; fy++) {
-            int oy = y + fy;
-	    int f_sx_fy = f->sx * fy;
-	    int v_sx_oy = V_sx * oy;
-            for(int fx = 0; fx < f->sx; fx++) {
-              int ox = x + fx;
-	      int f_w_ind = (f_sx_fy + fx) * f_depth;
-	      int v_w_ind = (v_sx_oy + ox) * V_depth;
-              if(oy >= 0 && oy < V_sy && ox >=0 && ox < V_sx) {
-                for(int fd=0;fd < f->depth; fd++) {
-                  a += f->w[f_w_ind+fd] * V->w[v_w_ind+fd];
-                }
-              }
-            }
-          }
-          a += l->biases->w[d];
-          set_vol(A, ax, ay, d, a);
-        }
-      }
+	for(int d = 0; d < l->out_depth; d++) {
+	    vol_t* f = l->filters[d];
+	    int x = -l->pad;
+	    int y = -l->pad;
+	    int f_depth = f->depth;
+	    for(int ay = 0; ay < l->out_sy; y += xy_stride, ay++) {
+		x = -l->pad;
+		for(int ax=0; ax < l->out_sx; x += xy_stride, ax++) {
+		    double a = 0.0;
+		    for(int fy = 0; fy < f->sy; fy++) {
+			int oy = y + fy;
+			int f_sx_fy = f->sx * fy;
+			int v_sx_oy = V_sx * oy;
+			for(int fx = 0; fx < f->sx; fx++) {
+			    int ox = x + fx;
+			    int f_w_ind = (f_sx_fy + fx) * f_depth;
+			    int v_w_ind = (v_sx_oy + ox) * V_depth;
+			    if(oy >= 0 && oy < V_sy && ox >=0 && ox < V_sx) {
+				for(int fd=0;fd < f->depth; fd++) {
+				    a += f->w[f_w_ind+fd] * V->w[v_w_ind+fd];
+				}
+			    }
+			}
+		    }
+		    a += l->biases->w[d];
+		    set_vol(A, ax, ay, d, a);
+		}
+	    }
+	}
     }
-  }
 }
 
 void conv_load(conv_layer_t* l, const char* fn) {
@@ -658,7 +695,7 @@ static double indiv_layer_time[11];
 void net_forward(network_t* net, batch_t* v, int start, int end) {
     uint64_t t[12];
     t[0] = timestamp_us();
-    conv_forward(net->l0, v[0], v[1], start, end);
+    conv_forward_1(net->l0, v[0], v[1], start, end);
     t[1] = timestamp_us();    
     relu_forward(net->l1, v[1], v[2], start, end);
     t[2] = timestamp_us();
