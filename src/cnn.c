@@ -221,13 +221,9 @@ void conv_forward_1(conv_layer_t* l, vol_t** in, vol_t** out, int start, int end
 			    a += f_w[f_w_ind] * V_w[v_w_ind];
 			    a += f_w[f_w_ind+1] * V_w[v_w_ind+1];
 			    a += f_w[f_w_ind+2] * V_w[v_w_ind+2];
- 			    /* for (int fd = 0; fd < 3; fd++) { */
-			    /* 	a += f_w[f_w_ind + fd] * V_w[v_w_ind + fd]; */
-			    /* } */
 			}
 		    }
 		    a += l->biases->w[d];
-		    /* a += l_biases_w[d]; */
 		    set_vol(A, x+2, y+2, d, a);
 		}
 	    }
@@ -262,9 +258,6 @@ void conv_forward_2(conv_layer_t* l, vol_t** in, vol_t** out, int start, int end
 			    int f_w_ind = (f_sx_fy + fx) * 16;
 			    int v_w_ind = (v_sx_oy + ox) * 16;
 			    if(oy >= 0 && oy < 16 && ox >=0 && ox < 16) {
-				/* for(int fd=0;fd < f->depth; fd++) { */
-				/*     a += f_w[f_w_ind+fd] * V_w[v_w_ind+fd]; */
-				/* } */
 				__m256d sum = _mm256_set_pd(0.0, 0.0, 0.0, 0.0);
 				__m256d fw[4], vw[4], prod;
 				fw[0] = _mm256_loadu_pd(f_w + f_w_ind);
