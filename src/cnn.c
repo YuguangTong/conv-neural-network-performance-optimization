@@ -189,37 +189,46 @@ void conv_forward_1(conv_layer_t* l, vol_t** in, vol_t** out, int start, int end
 	vol_t* V = in[i];
 	vol_t* A = out[i];
 	double* V_w = V->w;
-	
 	for(int d = 0; d < l->out_depth; d++) {
 	    vol_t* f = l->filters[d];
 	    double* f_w = f->w;
 	    int x = -2;
 	    int y = -2;
-	    
-	    for(int ay = 0; ay < 32; y++, ay++) {
-		x = -2;
-		for(int ax=0; ax < 32; x++, ax++) {
+
+	    for(y = -2; y < 30; y++) {
+		int fy_init = 0, fy_final = 5;
+
+		if (y < 0)
+		    fy_init = -y;
+		if (y > 27)
+		    fy_final = 32 - y;
+		for(x = -2; x < 30; x++) {
 		    double a = 0.0;
-		    for(int fy = 0; fy < 5; fy++) {
+		    int fx_init = 0, fx_final = 5;
+
+		    if (x < 0)
+			fx_init = -x;
+		    if (x > 27)
+			fx_final = 32-x;
+		    for(int fy = fy_init; fy < fy_final; fy++) {
 			int oy = y + fy;
-			int f_sx_fy = f->sx * fy;
+			int f_sx_fy = 5 * fy;
 			int v_sx_oy = 32 * oy;
-			for(int fx = 0; fx < 5; fx++) {
+			for(int fx = fx_init; fx < fx_final; fx++) {
 			    int ox = x + fx;
 			    int f_w_ind = (f_sx_fy + fx) * 3;
 			    int v_w_ind = (v_sx_oy + ox) * 3;
-			    if(oy >= 0 && oy < 32 && ox >=0 && ox < 32) {
-				/* a += f_w[f_w_ind] * V_w[v_w_ind]; */
-				/* a += f_w[f_w_ind+1] * V_w[v_w_ind+1]; */
-				/* a += f_w[f_w_ind+2] * V_w[v_w_ind+2]; */
-				for (int fd = 0; fd < 3; fd++) {
-				    a += f_w[f_w_ind + fd] * V_w[v_w_ind + fd];
-				}
-			    }
+			    a += f_w[f_w_ind] * V_w[v_w_ind];
+			    a += f_w[f_w_ind+1] * V_w[v_w_ind+1];
+			    a += f_w[f_w_ind+2] * V_w[v_w_ind+2];
+ 			    /* for (int fd = 0; fd < 3; fd++) { */
+			    /* 	a += f_w[f_w_ind + fd] * V_w[v_w_ind + fd]; */
+			    /* } */
 			}
 		    }
 		    a += l->biases->w[d];
-		    set_vol(A, ax, ay, d, a);
+		    /* a += l_biases_w[d]; */
+		    set_vol(A, x+2, y+2, d, a);
 		}
 	    }
 	}
@@ -786,6 +795,7 @@ void free_batch(batch_t* v, int size) {
  * to process (start and end are inclusive).
  */
 static double indiv_layer_time[11];
+static double tot_layer_time[11];
 
 void net_forward(network_t* net, batch_t* v, int start, int end) {
     uint64_t t[12];
@@ -815,6 +825,10 @@ void net_forward(network_t* net, batch_t* v, int start, int end) {
 
     for (int i=0; i<11; i++)
 	indiv_layer_time[i] = (t[i+1] - t[i]);
+    for (int j = 0; j < 11; j++) {
+	tot_layer_time[j] += indiv_layer_time[j];
+    }
+    
 }
 
 /*
@@ -827,7 +841,7 @@ void net_forward(network_t* net, batch_t* v, int start, int end) {
  */
 
 #define CAT_LABEL 3
-static double tot_layer_time[11];
+//static double tot_layer_time[11];
 #define BATCH_SIZE 16
 
 void net_classify_cats(network_t* net, vol_t** input, double* output, int n) {
@@ -839,9 +853,9 @@ void net_classify_cats(network_t* net, vol_t** input, double* output, int n) {
 	    copy_vol(batch[0][j], input[i+j]);
 	}
 	net_forward(net, batch, 0, BATCH_SIZE-1);
-	for (int j = 0; j < 11; j++) {
-	    tot_layer_time[j] += indiv_layer_time[j];
-	}
+	/* for (int j = 0; j < 11; j++) { */
+	/*     tot_layer_time[j] += indiv_layer_time[j]; */
+	/* } */
 	for (int j = 0; j < BATCH_SIZE; j++) {
 	    output[i+j] = batch[11][j]->w[CAT_LABEL];
 	}
