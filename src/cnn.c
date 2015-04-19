@@ -483,6 +483,34 @@ pool_layer_t* make_pool_layer(int in_sx, int in_sy, int in_depth,
   return l;
 }
 
+void pool_forward_1(pool_layer_t* l, vol_t** in, vol_t** out, int start, int end) {
+  for (int i = start; i <= end; i++) {
+    vol_t* V = in[i];
+    vol_t* A = out[i];
+
+    for(int d=0;d<16;d++) {
+      int x = 0;
+      int y = 0;
+      
+      for(int ax=0; ax<16; x+=2, ax++) {
+        y = 0;
+        for(int ay=0; ay<16; y+=2,ay++) {
+	    double a = -99999;
+	    double v = get_vol(V, x, y, d);
+	    if(v > a) { a = v; }
+	    v = get_vol(V, x, y+1, d);
+	    if(v > a) { a = v; }
+	    v = get_vol(V, x+1, y, d);
+	    if(v > a) { a = v; }
+	    v = get_vol(V, x+1, y+1, d);
+	    if(v > a) { a = v; }
+	    set_vol(A, ax, ay, d, a);
+        }
+      }
+    }
+  }
+}
+
 void pool_forward(pool_layer_t* l, vol_t** in, vol_t** out, int start, int end) {
   for (int i = start; i <= end; i++) {
     vol_t* V = in[i];
@@ -810,7 +838,7 @@ void net_forward(network_t* net, batch_t* v, int start, int end) {
     t[1] = timestamp_us();    
     relu_forward(net->l1, v[1], v[2], start, end);
     t[2] = timestamp_us();
-    pool_forward(net->l2, v[2], v[3], start, end);
+    pool_forward_1(net->l2, v[2], v[3], start, end);
     t[3] = timestamp_us();
     conv_forward_2(net->l3, v[3], v[4], start, end);
     t[4] = timestamp_us();
