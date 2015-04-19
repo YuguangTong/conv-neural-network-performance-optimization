@@ -851,23 +851,29 @@ void net_forward(network_t* net, batch_t* v, int start, int end) {
 #define BATCH_SIZE 16
 
 void net_classify_cats(network_t* net, vol_t** input, double* output, int n) {
-    batch_t* batch = make_batch(net, BATCH_SIZE);
-    int m = n/BATCH_SIZE*BATCH_SIZE;
-    
-    for (int i = 0; i < m; i+=BATCH_SIZE) {
-	for (int j = 0; j < BATCH_SIZE; j++) {
-	    copy_vol(batch[0][j], input[i+j]);
+    int m = n/BATCH_SIZE/8 * 8 * BATCH_SIZE;
+    int chunk_size = m/8;
+#pragma omp parallel num_threads(8)
+    {
+	batch_t* batch = make_batch(net, BATCH_SIZE);
+	int thread_id = omp_get_thread_num();
+	int init = thread_id * chunk_size;
+	int fin = init + chunk_size;
+	
+	for (int i = init; i < fin; i+=BATCH_SIZE) {
+	    for (int j = 0; j < BATCH_SIZE; j++) {
+		copy_vol(batch[0][j], input[i+j]);
+	    }
+	    net_forward(net, batch, 0, BATCH_SIZE-1);
+	    for (int j = 0; j < BATCH_SIZE; j++) {
+		output[i+j] = batch[11][j]->w[CAT_LABEL];
+	    }
 	}
-	net_forward(net, batch, 0, BATCH_SIZE-1);
-	/* for (int j = 0; j < 11; j++) { */
-	/*     tot_layer_time[j] += indiv_layer_time[j]; */
-	/* } */
-	for (int j = 0; j < BATCH_SIZE; j++) {
-	    output[i+j] = batch[11][j]->w[CAT_LABEL];
-	}
+	free_batch(batch, BATCH_SIZE);
     }
-    free_batch(batch, BATCH_SIZE);
 
+    batch_t* batch;
+    
     if (m < n -1) {
 	batch = make_batch(net, 1);
 	for (int i = m; i < n; i++) {
